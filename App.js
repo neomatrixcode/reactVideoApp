@@ -12,7 +12,8 @@ import {
 
 import ImagePicker from 'react-native-image-crop-picker';
 import Video from 'react-native-video';
-import FFmpegWrapper from './lib/FFmpeg';
+import FFmpegWrapper from './lib/convertVideo';
+import moment from "moment";
 
 const SCREEN_WIDTH = Dimensions.get('screen').width;
 const SCREEN_HEIGHT = Dimensions.get('screen').height;
@@ -54,22 +55,27 @@ const getPopLinePlayTime = offset => {
 
 const App = () => {
   const [selectedVideo, setSelectedVideo] = useState(); // {uri: <string>, localFileName: <string>, creationDate: <Date>}
+  const [convertedVideo, setConvertedVideo] = useState();
   const [frames, setFrames] = useState(); // <[{status: <FRAME_STATUS>, uri: <string>}]>
   const [framesLineOffset, setFramesLineOffset] = useState(0); // number
-  const [paused, setPaused] = useState(false);
+  const [paused, setPaused] = useState(true);
 
   const videoPlayerRef = useRef();
 
   const handlePressSelectVideoButton = () => {
+    setConvertedVideo(null)
+    setSelectedVideo(null)
     ImagePicker.openPicker({
       mediaType: 'video',
     }).then(videoAsset => {
       console.log(`Selected video ${JSON.stringify(videoAsset, null, 2)}`);
-      setSelectedVideo({
+      objectVideoAsset = {
         uri: videoAsset.sourceURL || videoAsset.path,
         localFileName: getFileNameFromPath(videoAsset.path),
         creationDate: videoAsset.creationDate,
-      });
+      }
+      setSelectedVideo(objectVideoAsset);
+      handleVideoConverter(objectVideoAsset);
     });
   };
 
@@ -86,32 +92,29 @@ const App = () => {
     setFramesLineOffset(nativeEvent.contentOffset.x);
   };
 
-  const handleVideoLoad = videoAssetLoaded => {
-    const numberOfFrames = Math.ceil(videoAssetLoaded.duration);
-    setFrames(
-      Array(numberOfFrames).fill({
-        status: FRAME_STATUS.LOADING.name.description,
-      }),
-    );
+  const handleVideoProcessingLoad = videoAssetLoaded => {
+    setSelectedVideo(null)
 
-    FFmpegWrapper.getFrames(
+    console.log(`Selected video processing  ${JSON.stringify(videoAssetLoaded, null, 2)}`);
+
+  };
+
+  const handleVideoConverter = (selectedVideo) => {
+    if(selectedVideo){
+      console.log("selectedVideo True", selectedVideo)
+    FFmpegWrapper.convertVideo(
       selectedVideo.localFileName,
       selectedVideo.uri,
-      numberOfFrames,
-      filePath => {
-        const _framesURI = [];
-        for (let i = 0; i < numberOfFrames; i++) {
-          _framesURI.push(
-            `${filePath.replace('%4d', String(i + 1).padStart(4, 0))}`,
-          );
-        }
-        const _frames = _framesURI.map(_frameURI => ({
-          uri: _frameURI,
-          status: FRAME_STATUS.READY.name.description,
-        }));
-        setFrames(_frames);
+      setConvertedVideo,
+      path => {
+        console.log(
+            `Video ready, check at ${path}`,
+          )
+          setSelectedVideo(null)
       },
+
     );
+  }
   };
 
   const handleOnProgress = ({currentTime}) => {
@@ -143,58 +146,48 @@ const App = () => {
 
   return (
     <SafeAreaView style={styles.mainContainer}>
-      {selectedVideo ? (
-        <>
-          <View style={styles.videoContainer}>
-            <Video
-              ref={videoPlayerRef}
-              style={styles.video}
-              resizeMode={'cover'}
-              source={{uri: selectedVideo.uri}}
-              repeat={true}
-              paused={paused}
-              onLoad={handleVideoLoad}
-              onProgress={handleOnProgress}
-            />
-          </View>
-          {frames && (
-            <View style={styles.durationWindowAndFramesLineContainer}>
-              <View style={styles.durationWindow}>
-                <View style={styles.durationLabelContainer}>
-                  <Text style={styles.durationLabel}>
-                    {DURATION_WINDOW_DURATION} sec.
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.popLineContainer}>
-                <View style={styles.popLine} />
-              </View>
-              <View style={styles.durationWindowLeftBorder} />
-              <View style={styles.durationWindowRightBorder} />
-              <ScrollView
-                showsHorizontalScrollIndicator={false}
-                horizontal={true}
-                style={styles.framesLine}
-                alwaysBounceHorizontal={true}
-                scrollEventThrottle={1}
-                onScroll={handleOnScroll}
-                onTouchStart={handleOnTouchStart}
-                onTouchEnd={handleOnTouchEnd}
-                onMomentumScrollEnd={handleOnTouchEnd}>
-                <View style={styles.prependFrame} />
-                {frames.map((frame, index) => renderFrame(frame, index))}
-                <View style={styles.appendFrame} />
-              </ScrollView>
-            </View>
-          )}
-        </>
-      ) : (
-        <Pressable
+
+    <Pressable
           style={styles.buttonContainer}
           onPress={handlePressSelectVideoButton}>
           <Text style={styles.buttonText}>Select a video</Text>
         </Pressable>
+
+      {selectedVideo ? (
+        <>
+          <View style={styles.videoContainer}>
+              <Text style={{textAlign: 'center',fontWeight: 'bold',fontSize: 18,marginTop: 0,backgroundColor: 'yellow'}}>video converter in progress ....</Text>
+          </View>
+        </>
+      ) : (
+      null
       )}
+
+      {convertedVideo ? (
+        <View style={styles.videoContainer}>
+            <>
+              <Video
+                ref={videoPlayerRef}
+                style={styles.video}
+                resizeMode={'cover'}
+                source={{uri: convertedVideo.uri}}
+                repeat={true}
+                //paused={paused}
+                onLoad={handleVideoProcessingLoad}
+                //onProgress={handleOnProgress}
+              />
+              <Text style={{color:"green"}}>uri: {convertedVideo.uri}</Text>
+              <Text style={{color:"green"}}>local FileName: {convertedVideo.localFileName}</Text>
+              <Text style={{color:"green"}}>time Process: { moment.utc(convertedVideo.timeProcess*1000).format('HH:mm:ss')}</Text>
+            </>
+          </View>
+          ) : (
+          null
+          )}
+
+
+
+
     </SafeAreaView>
   );
 };
