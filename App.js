@@ -178,7 +178,7 @@ const App = () => {
               />
               <Text style={{color:"green"}}>uri: {convertedVideo.uri}</Text>
               <Text style={{color:"green"}}>local FileName: {convertedVideo.localFileName}</Text>
-              <Text style={{color:"green"}}>time Process: { moment.utc(convertedVideo.timeProcess*1000).format('HH:mm:ss')}</Text>
+              <Text style={{color:"green"}}>time Process: { convertedVideo.timeProcess} milliseconds</Text>
             </>
           </View>
           ) : (
