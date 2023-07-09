@@ -8,6 +8,7 @@ import {
   View,
   ScrollView,
   Image,
+  TouchableHighlight,
 } from 'react-native';
 
 import ImagePicker from 'react-native-image-crop-picker';
@@ -40,25 +41,13 @@ const FRAME_STATUS = Object.freeze({
   READY: {name: Symbol('READY')},
 });
 
-const getLeftLinePlayTime = offset => {
-  return offset / (FRAME_PER_SEC * TILE_WIDTH);
-};
-const getRightLinePlayTime = offset => {
-  return (offset + DURATION_WINDOW_WIDTH) / (FRAME_PER_SEC * TILE_WIDTH);
-};
-const getPopLinePlayTime = offset => {
-  return (
-    (offset + (DURATION_WINDOW_WIDTH * parseFloat(POPLINE_POSITION)) / 100) /
-    (FRAME_PER_SEC * TILE_WIDTH)
-  );
-};
 
 const App = () => {
   const [selectedVideo, setSelectedVideo] = useState(); // {uri: <string>, localFileName: <string>, creationDate: <Date>}
   const [convertedVideo, setConvertedVideo] = useState();
   const [frames, setFrames] = useState(); // <[{status: <FRAME_STATUS>, uri: <string>}]>
   const [framesLineOffset, setFramesLineOffset] = useState(0); // number
-  const [paused, setPaused] = useState(true);
+  const [paused, setPaused] = useState(false);
 
   const videoPlayerRef = useRef();
 
@@ -79,24 +68,13 @@ const App = () => {
     });
   };
 
-  const handleOnTouchStart = () => {
-    setPaused(true);
-  };
-  const handleOnTouchEnd = () => {
-    setPaused(false);
-  };
 
-  const handleOnScroll = ({nativeEvent}) => {
-    const playbackTime = getPopLinePlayTime(nativeEvent.contentOffset.x);
-    videoPlayerRef.current?.seek(playbackTime);
-    setFramesLineOffset(nativeEvent.contentOffset.x);
+  const handlePressed = () => {
+    setPaused(!paused);
   };
 
   const handleVideoProcessingLoad = videoAssetLoaded => {
-    setSelectedVideo(null)
-
     console.log(`Selected video processing  ${JSON.stringify(videoAssetLoaded, null, 2)}`);
-
   };
 
   const handleVideoConverter = (selectedVideo) => {
@@ -117,32 +95,6 @@ const App = () => {
   }
   };
 
-  const handleOnProgress = ({currentTime}) => {
-    if (currentTime >= getRightLinePlayTime(framesLineOffset)) {
-      videoPlayerRef.current.seek(getLeftLinePlayTime(framesLineOffset));
-    }
-  };
-
-  const renderFrame = (frame, index) => {
-    if (frame.status === FRAME_STATUS.LOADING.name.description) {
-      return <View style={styles.loadingFrame} key={index} />;
-    } else {
-      return (
-        <Image
-          key={index}
-          source={{uri: 'file://' + frame.uri}}
-          style={{
-            width: TILE_WIDTH,
-            height: TILE_HEIGHT,
-            zIndex: 10,
-          }}
-          onLoad={() => {
-            console.log('Image loaded');
-          }}
-        />
-      );
-    }
-  };
 
   return (
     <SafeAreaView style={styles.mainContainer}>
@@ -166,19 +118,20 @@ const App = () => {
       {convertedVideo ? (
         <View style={styles.videoContainer}>
             <>
+            <TouchableHighlight onPress={() => handlePressed()}>
               <Video
                 ref={videoPlayerRef}
                 style={styles.video}
                 resizeMode={'cover'}
                 source={{uri: convertedVideo.uri}}
                 repeat={true}
-                //paused={paused}
+                paused={paused}
                 onLoad={handleVideoProcessingLoad}
-                //onProgress={handleOnProgress}
               />
-              <Text style={{color:"green"}}>uri: {convertedVideo.uri}</Text>
-              <Text style={{color:"green"}}>local FileName: {convertedVideo.localFileName}</Text>
-              <Text style={{color:"green"}}>time Process: { convertedVideo.timeProcess} milliseconds</Text>
+            </TouchableHighlight>
+              <Text style={{color:"green"}}>  uri: {convertedVideo.uri}</Text>
+              <Text style={{color:"green"}}>  local FileName: {convertedVideo.localFileName}</Text>
+              <Text style={{color:"green"}}>  time Process: { convertedVideo.timeProcess} milliseconds</Text>
             </>
           </View>
           ) : (
