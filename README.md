@@ -79,8 +79,17 @@ use npm to interactively preview the app on a mobile device or virtual device
 ### Create debug apk
 
 Write following commands
+ 
+Linux:
 ```bash
 npm run build-android && cd android && ./gradlew assembleDebug
 ```
+
+Linux:
+```bash
+npm run build-android && cd android && gradlew.bat assembleDebug
+```
+
+
 Then You can find your apk here:
 > app/build/outputs/apk/
